@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Palm Reader Vibe · Web Demo</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%2322c55e'/%3E%3C/svg%3E" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #050816;
+        --card-bg: #0b1220;
+        --accent: #22c55e;
+        --accent-soft: rgba(34, 197, 94, 0.18);
+        --accent-strong: rgba(34, 197, 94, 0.35);
+        --border: rgba(148, 163, 184, 0.18);
+        --text-main: #e5e7eb;
+        --text-muted: #9ca3af;
+        --danger: #f97373;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at top, #1e293b 0, var(--bg) 55%);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+          "Segoe UI", sans-serif;
+        color: var(--text-main);
+      }
+
+      .app-shell {
+        width: min(420px, 100vw);
+        height: min(820px, 100vh);
+        border-radius: 28px;
+        padding: 16px 14px 20px;
+        background: radial-gradient(circle at top left, #111827 0, #020617 60%);
+        box-shadow:
+          0 32px 80px rgba(0, 0, 0, 0.8),
+          0 0 0 1px rgba(148, 163, 184, 0.18);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .app-inner {
+        border-radius: 24px;
+        height: 100%;
+        padding: 16px 16px 18px;
+        background:
+          radial-gradient(circle at top, rgba(56, 189, 248, 0.12), transparent 55%),
+          radial-gradient(circle at bottom, rgba(34, 197, 94, 0.12), transparent 55%),
+          var(--card-bg);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .app-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .title-block {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .title {
+        font-size: 18px;
+        font-weight: 620;
+        letter-spacing: 0.02em;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .title-pill {
+        font-size: 11px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        color: var(--text-muted);
+      }
+
+      .subtitle {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .status-chip {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        font-size: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        text-align: right;
+      }
+
+      .status-chip-main {
+        font-weight: 500;
+        color: var(--accent);
+      }
+
+      .status-chip-sub {
+        color: var(--text-muted);
+      }
+
+      .preview-shell {
+        position: relative;
+        border-radius: 20px;
+        background: radial-gradient(circle at top, #020617, #020617 55%);
+        border: 1px solid var(--border);
+        overflow: hidden;
+        flex: 1;
+        min-height: 280px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #video,
+      #output-canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      #video {
+        transform: scaleX(-1);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #output-canvas {
+        z-index: 1;
+        transition: transform 0.12s ease;
+      }
+
+      /* 摄像头模式下镜像画面 */
+      #output-canvas.mirrored {
+        transform: scaleX(-1);
+        transform-origin: center;
+      }
+
+      .preview-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+      }
+
+      .preview-hint {
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        font-size: 11px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .preview-hint-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--accent);
+        box-shadow: 0 0 0 4px var(--accent-soft);
+      }
+
+      .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .btn-row {
+        display: flex;
+        gap: 8px;
+      }
+
+      button {
+        all: unset;
+        cursor: pointer;
+      }
+
+      .btn-primary,
+      .btn-secondary,
+      .btn-ghost {
+        flex: 1;
+        padding: 10px 12px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: transform 0.12s ease, box-shadow 0.12s ease,
+          background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+        white-space: nowrap;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #22c55e, #4ade80);
+        color: #022c22;
+        box-shadow:
+          0 10px 22px rgba(34, 197, 94, 0.55),
+          0 0 0 1px rgba(16, 185, 129, 0.7);
+      }
+
+      .btn-secondary {
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.45);
+        color: var(--text-main);
+      }
+
+      .btn-ghost {
+        flex: 0 0 auto;
+        padding-inline: 14px;
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        color: var(--accent);
+      }
+
+      .btn-icon {
+        font-size: 16px;
+      }
+
+      .btn-primary:active,
+      .btn-secondary:active,
+      .btn-ghost:active {
+        transform: scale(0.97);
+      }
+
+      .btn-primary:hover {
+        box-shadow:
+          0 14px 30px rgba(34, 197, 94, 0.65),
+          0 0 0 1px rgba(16, 185, 129, 0.8);
+      }
+
+      .btn-disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        box-shadow: none !important;
+        border-color: rgba(148, 163, 184, 0.2) !important;
+        background: rgba(31, 41, 55, 0.7) !important;
+        color: rgba(148, 163, 184, 0.7) !important;
+      }
+
+      .meta-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .meta-kv {
+        display: flex;
+        gap: 16px;
+      }
+
+      .meta-pill {
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .meta-label {
+        color: var(--text-muted);
+      }
+
+      .meta-value {
+        color: var(--accent);
+      }
+
+      .meta-warning {
+        color: var(--danger);
+      }
+
+      .error-text {
+        color: var(--danger);
+        font-size: 11px;
+        margin-top: 4px;
+      }
+
+      input[type="file"] {
+        display: none;
+      }
+
+      @media (max-width: 480px) {
+        .app-shell {
+          width: 100vw;
+          height: 100vh;
+          border-radius: 0;
+          padding: 10px 8px;
+          box-shadow: none;
+        }
+      }
+    </style>
+
+    <!-- MediaPipe Hands (Web, legacy) -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <!-- OpenCV.js (for后续图像处理扩展，当前示例不强依赖) -->
+    <script async src="https://docs.opencv.org/4.x/opencv.js"></script>
+  </head>
+
+  <body>
+    <div class="app-shell">
+      <div class="app-inner">
+        <header class="app-header">
+          <div class="title-block">
+            <div class="title">
+              Palm Reader Vibe
+              <span class="title-pill">Hands · Web SDK</span>
+            </div>
+            <div class="subtitle">掌纹关键点 · 摄像头 / 图片上传 Demo</div>
+          </div>
+          <div class="status-chip">
+            <div class="status-chip-main" id="status-text">待机</div>
+            <div class="status-chip-sub" id="mode-text">未选择输入源</div>
+          </div>
+        </header>
+
+        <section class="preview-shell">
+          <video id="video" playsinline></video>
+          <canvas id="output-canvas"></canvas>
+          <div class="preview-overlay">
+            <div class="preview-hint" id="hint-text">
+              <span class="preview-hint-dot"></span>
+              <span
+                >请打开摄像头或上传一张图片，确保手心正对镜头并保持光线充足。</span
+              >
+            </div>
+          </div>
+        </section>
+
+        <section class="controls">
+          <div class="btn-row">
+            <button class="btn-secondary" id="open-camera-btn">
+              <span class="btn-icon">📷</span>
+              打开摄像头
+            </button>
+            <button class="btn-secondary" id="upload-photo-btn">
+              <span class="btn-icon">🖼️</span>
+              上传照片
+            </button>
+            <button class="btn-ghost" id="recognize-btn">
+              <span class="btn-icon">✨</span>
+              识别
+            </button>
+            <input type="file" accept="image/*" id="file-input" />
+          </div>
+
+          <div class="meta-row">
+            <div class="meta-kv">
+              <span class="meta-pill">
+                <span class="meta-label">耗时</span>
+                <span class="meta-value" id="latency-label">-- ms</span>
+              </span>
+              <span class="meta-pill">
+                <span class="meta-label">关键点</span>
+                <span class="meta-value" id="landmark-count-label">0</span>
+              </span>
+            </div>
+            <span id="quality-label">建议：正对手心 · 光线充足</span>
+          </div>
+          <div id="error-label" class="error-text"></div>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      const videoEl = document.getElementById("video");
+      const canvasEl = document.getElementById("output-canvas");
+      const canvasCtx = canvasEl.getContext("2d");
+      const openCameraBtn = document.getElementById("open-camera-btn");
+      const uploadPhotoBtn = document.getElementById("upload-photo-btn");
+      const recognizeBtn = document.getElementById("recognize-btn");
+      const fileInput = document.getElementById("file-input");
+      const statusText = document.getElementById("status-text");
+      const modeText = document.getElementById("mode-text");
+      const hintText = document.getElementById("hint-text");
+      const latencyLabel = document.getElementById("latency-label");
+      const landmarkCountLabel = document.getElementById(
+        "landmark-count-label",
+      );
+      const qualityLabel = document.getElementById("quality-label");
+      const errorLabel = document.getElementById("error-label");
+
+      let camera = null;
+      let hands = null;
+      let lastLandmarks = null;
+      let lastLatencyMs = null;
+      let usingCamera = false;
+
+      function setStatus(main, mode, quality) {
+        if (main !== undefined) statusText.textContent = main;
+        if (mode !== undefined) modeText.textContent = mode;
+        if (quality !== undefined) qualityLabel.textContent = quality;
+      }
+
+      function setError(message) {
+        errorLabel.textContent = message || "";
+      }
+
+      function setButtonsState({ cameraBusy, imageBusy }) {
+        if (cameraBusy) {
+          openCameraBtn.classList.add("btn-disabled");
+        } else {
+          openCameraBtn.classList.remove("btn-disabled");
+        }
+
+        if (imageBusy) {
+          uploadPhotoBtn.classList.add("btn-disabled");
+        } else {
+          uploadPhotoBtn.classList.remove("btn-disabled");
+        }
+      }
+
+      function resizeCanvasToContainer() {
+        const rect = canvasEl.parentElement.getBoundingClientRect();
+        canvasEl.width = rect.width;
+        canvasEl.height = rect.height;
+      }
+
+      window.addEventListener("resize", resizeCanvasToContainer);
+      resizeCanvasToContainer();
+
+      function onResults(results) {
+        const tEnd = performance.now();
+
+        if (results.image) {
+          const tStart = results._startTs || tEnd;
+          canvasCtx.save();
+          canvasCtx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+
+          const imgW = results.image.width;
+          const imgH = results.image.height;
+          const scale = Math.min(
+            canvasEl.width / imgW,
+            canvasEl.height / imgH,
+          );
+          const drawW = imgW * scale;
+          const drawH = imgH * scale;
+          let offsetX = (canvasEl.width - drawW) / 2;
+          const offsetY = (canvasEl.height - drawH) / 2;
+
+          // 先画原图
+          canvasCtx.drawImage(
+            results.image,
+            0,
+            0,
+            imgW,
+            imgH,
+            offsetX,
+            offsetY,
+            drawW,
+            drawH,
+          );
+
+          lastLandmarks = null;
+          let count = 0;
+
+          if (results.multiHandLandmarks && results.multiHandLandmarks.length) {
+            lastLandmarks = [];
+
+            for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+              const landmarks = results.multiHandLandmarks[i];
+              lastLandmarks.push(landmarks);
+              count += landmarks.length;
+
+              // 手动将归一化坐标映射到 Canvas 像素坐标，并绘制连接线与关键点
+              const pts = landmarks.map((lm) => {
+                const xImg = lm.x * drawW + offsetX;
+                const yImg = lm.y * drawH + offsetY;
+                return { x: xImg, y: yImg };
+              });
+
+              // 根据 MediaPipe 的 HAND_CONNECTIONS 索引绘制连线（半透明白色）
+              if (window.HAND_CONNECTIONS) {
+                canvasCtx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+                canvasCtx.lineWidth = 2;
+                for (const [startIdx, endIdx] of window.HAND_CONNECTIONS) {
+                  const p1 = pts[startIdx];
+                  const p2 = pts[endIdx];
+                  if (!p1 || !p2) continue;
+                  canvasCtx.beginPath();
+                  canvasCtx.moveTo(p1.x, p1.y);
+                  canvasCtx.lineTo(p2.x, p2.y);
+                  canvasCtx.stroke();
+                }
+              }
+
+              // 画关键点（亮绿色）
+              canvasCtx.fillStyle = "#00FF00";
+              for (const p of pts) {
+                canvasCtx.beginPath();
+                canvasCtx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                canvasCtx.fill();
+              }
+            }
+          }
+
+          // 调试用：如果检测到手掌，在左上角画一个绿色方块
+          if (lastLandmarks) {
+            canvasCtx.fillStyle = "#00FF00";
+            canvasCtx.fillRect(8, 8, 18, 18);
+
+            // 在掌心附近显示 "Vibe Check: OK" 标签（取第一只手的所有点平均位置）
+            const firstHand = lastLandmarks[0];
+            if (firstHand && firstHand.length) {
+              let sumX = 0;
+              let sumY = 0;
+              for (const lm of firstHand) {
+                sumX += lm.x;
+                sumY += lm.y;
+              }
+              const cx =
+                (sumX / firstHand.length) * drawW +
+                offsetX;
+              const cy =
+                (sumY / firstHand.length) * drawH +
+                offsetY;
+
+              const label = "Vibe Check: OK";
+              canvasCtx.font = "12px system-ui, -apple-system, BlinkMacSystemFont";
+              const textMetrics = canvasCtx.measureText(label);
+              const paddingX = 8;
+              const paddingY = 4;
+              const boxW = textMetrics.width + paddingX * 2;
+              const boxH = 18;
+              const boxX = Math.max(6, Math.min(canvasEl.width - boxW - 6, cx - boxW / 2));
+              const boxY = Math.max(6, cy - 28);
+
+              canvasCtx.fillStyle = "rgba(15, 23, 42, 0.9)";
+              canvasCtx.strokeStyle = "rgba(0, 255, 0, 0.8)";
+              canvasCtx.lineWidth = 1;
+              const radius = 8;
+              canvasCtx.beginPath();
+              canvasCtx.moveTo(boxX + radius, boxY);
+              canvasCtx.lineTo(boxX + boxW - radius, boxY);
+              canvasCtx.quadraticCurveTo(
+                boxX + boxW,
+                boxY,
+                boxX + boxW,
+                boxY + radius,
+              );
+              canvasCtx.lineTo(boxX + boxW, boxY + boxH - radius);
+              canvasCtx.quadraticCurveTo(
+                boxX + boxW,
+                boxY + boxH,
+                boxX + boxW - radius,
+                boxY + boxH,
+              );
+              canvasCtx.lineTo(boxX + radius, boxY + boxH);
+              canvasCtx.quadraticCurveTo(
+                boxX,
+                boxY + boxH,
+                boxX,
+                boxY + boxH - radius,
+              );
+              canvasCtx.lineTo(boxX, boxY + radius);
+              canvasCtx.quadraticCurveTo(boxX, boxY, boxX + radius, boxY);
+              canvasCtx.closePath();
+              canvasCtx.fill();
+              canvasCtx.stroke();
+
+              canvasCtx.fillStyle = "#00FF00";
+              canvasCtx.fillText(
+                label,
+                boxX + paddingX,
+                boxY + boxH - paddingY - 2,
+              );
+            }
+          }
+
+          canvasCtx.restore();
+
+          landmarkCountLabel.textContent = count;
+
+          if (!lastLandmarks) {
+            setStatus("未检测到手掌", usingCamera ? "摄像头输入" : "图片输入");
+            setError("请确保手心正对镜头并保持光线充足。");
+          } else {
+            setStatus("检测到手掌", usingCamera ? "摄像头输入" : "图片输入");
+            setError("");
+          }
+
+          lastLatencyMs = tEnd - tStart;
+          latencyLabel.textContent = `${lastLatencyMs.toFixed(1)} ms`;
+        }
+      }
+
+      function initMediaPipe() {
+        hands = new window.Hands({
+          locateFile: (file) =>
+            `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+        });
+
+        hands.setOptions({
+          maxNumHands: 1,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
+
+        hands.onResults((results) => {
+          results._startTs = results._startTs || performance.now();
+          onResults(results);
+        });
+      }
+
+      function ensureHandsReady() {
+        if (!window.Hands) {
+          setError("MediaPipe Hands SDK 加载中，请稍候再试…");
+          return false;
+        }
+        if (!hands) {
+          initMediaPipe();
+        }
+        return true;
+      }
+
+      async function startCamera() {
+        if (!ensureHandsReady()) return;
+        if (openCameraBtn.classList.contains("btn-disabled")) return;
+
+        usingCamera = true;
+        // 摄像头模式：镜像 Canvas 以获得“自拍镜子”体验
+        canvasEl.classList.add("mirrored");
+        setButtonsState({ cameraBusy: true, imageBusy: false });
+        setStatus("等待摄像头授权…", "摄像头输入");
+        hintText.textContent = "如果浏览器弹出权限提示，请选择“允许使用摄像头”。";
+
+        try {
+          const constraints = {
+            video: { facingMode: "user", width: 640, height: 480 },
+            audio: false,
+          };
+          const stream = await navigator.mediaDevices.getUserMedia(
+            constraints,
+          );
+          videoEl.srcObject = stream;
+          await videoEl.play();
+
+          setStatus("实时检测中", "摄像头输入", "移动手掌以查看关键点跟随效果");
+          setError("");
+
+          if (camera) {
+            camera.stop();
+          }
+
+          camera = new window.Camera(videoEl, {
+            onFrame: async () => {
+              const tStart = performance.now();
+              await hands.send({
+                image: videoEl,
+                _startTs: tStart,
+              });
+            },
+            width: 640,
+            height: 480,
+          });
+          camera.start();
+        } catch (err) {
+          console.error(err);
+          setError("无法访问摄像头，请检查浏览器权限或使用 HTTPS / localhost 打开页面。");
+          setStatus("摄像头不可用", "建议改用“上传照片”模式");
+          setButtonsState({ cameraBusy: false, imageBusy: false });
+        }
+      }
+
+      function stopCamera() {
+        if (camera) {
+          camera.stop();
+          camera = null;
+        }
+        if (videoEl.srcObject) {
+          videoEl.srcObject.getTracks().forEach((t) => t.stop());
+          videoEl.srcObject = null;
+        }
+      }
+
+      function handleFileChange(event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+        if (!ensureHandsReady()) return;
+
+        usingCamera = false;
+        // 上传图片模式：取消镜像
+        canvasEl.classList.remove("mirrored");
+        stopCamera();
+        setButtonsState({ cameraBusy: false, imageBusy: true });
+        setStatus("处理中…", "图片输入");
+        hintText.textContent = "正在分析上传的图片，请稍候…";
+
+        const img = new Image();
+        img.onload = async () => {
+          try {
+            const offscreen = document.createElement("canvas");
+            offscreen.width = img.width;
+            offscreen.height = img.height;
+            const ctx = offscreen.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+
+            const tStart = performance.now();
+            await hands.send({
+              image: offscreen,
+              _startTs: tStart,
+            });
+
+            setButtonsState({ cameraBusy: false, imageBusy: false });
+          } catch (err) {
+            console.error(err);
+            setError("处理图片时发生错误，请尝试更换图片。");
+            setStatus("处理失败", "图片输入");
+            setButtonsState({ cameraBusy: false, imageBusy: false });
+          } finally {
+            fileInput.value = "";
+          }
+        };
+        img.onerror = () => {
+          setError("无法读取图片文件，请确认格式为 JPG/PNG 等常见图像类型。");
+          setButtonsState({ cameraBusy: false, imageBusy: false });
+          fileInput.value = "";
+        };
+        img.src = URL.createObjectURL(file);
+      }
+
+      function handleRecognizeClick() {
+        if (!lastLandmarks || !lastLandmarks.length) {
+          console.log("[Palm Reader Vibe] 当前没有可用的关键点数据。");
+          setError("当前没有可用的关键点，请先打开摄像头或上传包含手掌的图片。");
+          return;
+        }
+        const payload = {
+          timestamp: new Date().toISOString(),
+          latencyMs: lastLatencyMs,
+          hands: lastLandmarks.map((landmarks, handIndex) => ({
+            handIndex,
+            points: landmarks.map((lm, idx) => ({
+              index: idx,
+              x: lm.x,
+              y: lm.y,
+              z: lm.z,
+            })),
+          })),
+        };
+        console.log(
+          "[Palm Reader Vibe] 识别结果（用于后续掌纹主线提取）：",
+          payload,
+        );
+        setError("");
+        // 识别完成后再展示“可再次上传 / 切换模式”提示（无论是摄像头还是照片模式）
+        hintText.textContent =
+          "可再次上传新图片，或切换到摄像头模式进行实时检测。";
+      }
+
+      openCameraBtn.addEventListener("click", () => {
+        if (openCameraBtn.classList.contains("btn-disabled")) return;
+        startCamera();
+      });
+
+      uploadPhotoBtn.addEventListener("click", () => {
+        if (uploadPhotoBtn.classList.contains("btn-disabled")) return;
+        stopCamera();
+        fileInput.click();
+      });
+
+      fileInput.addEventListener("change", handleFileChange);
+      recognizeBtn.addEventListener("click", handleRecognizeClick);
+
+      window.addEventListener("beforeunload", () => {
+        stopCamera();
+      });
+    </script>
+  </body>
+</html>
+
