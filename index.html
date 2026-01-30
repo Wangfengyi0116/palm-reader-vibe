@@ -1,843 +1,302 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
+<head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
-    />
-    <title>Palm Reader Vibe · Web Demo</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%2322c55e'/%3E%3C/svg%3E" />
-    <style>
-      :root {
-        color-scheme: light;
-        --bg: #f5f7f9;
-        --card-bg: #ffffff;
-        --accent: #2563eb;
-        --accent-soft: #E8F0FE;
-        --accent-strong: #2563eb;
-        --border: #dde3ea;
-        --text-main: #333333;
-        --text-muted: #6b7280;
-        --danger: #e11d48;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        min-height: 100vh;
-        background: var(--bg);
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-          "Segoe UI", sans-serif;
-        color: var(--text-main);
-      }
-
-      .app-shell {
-        max-width: 1280px;
-        margin: 0 auto;
-        min-height: 100vh;
-        padding: 24px 32px;
-        box-sizing: border-box;
-      }
-
-      .app-inner {
-        border-radius: 18px;
-        min-height: calc(100vh - 48px);
-        padding: 20px 24px 24px;
-        background: var(--card-bg);
-        box-shadow:
-          0 18px 40px rgba(243, 247, 255, 0.08),
-          0 0 0 1px rgba(132, 149, 174, 0.18);
-        display: grid;
-        grid-template-columns: minmax(260px, 0.3fr) 0.7fr;
-        grid-template-rows: auto 1fr;
-        grid-template-areas:
-          "header header"
-          "controls preview";
-        gap: 18px 24px;
-      }
-
-      .app-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        grid-area: header;
-      }
-
-      .title-block {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .title {
-        font-size: 18px;
-        font-weight: 620;
-        letter-spacing: 0.02em;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .title-pill {
-        font-size: 11px;
-        padding: 2px 7px;
-        border-radius: 999px;
-        border: 1px solid rgba(148, 163, 184, 0.35);
-        color: var(--text-muted);
-      }
-
-      .subtitle {
-        font-size: 12px;
-        color: var(--text-muted);
-      }
-
-      .status-chip {
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: rgba(231, 236, 249, 0.85);
-        border: 1px solid rgba(148, 163, 184, 0.3);
-        font-size: 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        text-align: right;
-      }
-
-      .status-chip-main {
-        font-weight: 500;
-        color: var(--accent);
-      }
-
-      .status-chip-sub {
-        color: var(--text-muted);
-      }
-
-      .preview-shell {
-        grid-area: preview;
-        position: relative;
-        border-radius: 12px;
-        background: #ebf0f6;
-        border: 1px solid var(--border);
-        overflow: hidden;
-        min-height: 320px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      #video,
-      #output-canvas {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-
-      #video {
-        transform: scaleX(-1);
-        opacity: 0;
-        pointer-events: none;
-      }
-
-      #output-canvas {
-        z-index: 1;
-        transition: transform 0.12s ease;
-      }
-
-      /* 摄像头模式下镜像画面 */
-      #output-canvas.mirrored {
-        transform: scaleX(-1);
-        transform-origin: center;
-      }
-
-      .preview-overlay {
-        position: absolute;
-        inset: 0;
-        z-index: 2;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        pointer-events: none;
-        transition: opacity 0.18s ease;
-        opacity: 1;
-      }
-
-      .preview-overlay.hidden {
-        opacity: 0;
-      }
-
-      .preview-hint {
-        padding: 10px 14px;
-        border-radius: 999px;
-        background: rgba(241, 245, 254, 0.9);
-        border: 1px solid rgba(41, 44, 49, 0.6);
-        font-size: 11px;
-        color: var(--text-muted);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .preview-hint-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 999px;
-        background: var(--accent);
-        box-shadow: 0 0 0 4px var(--accent-soft);
-      }
-
-      .controls {
-        grid-area: controls;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
-
-      .btn-row {
-        display: flex;
-        gap: 8px;
-      }
-
-      button {
-        all: unset;
-        cursor: pointer;
-      }
-
-      .btn-primary,
-      .btn-secondary,
-      .btn-ghost {
-        flex: 1;
-        padding: 10px 12px;
-        border-radius: 999px;
-        font-size: 13px;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        transition: transform 0.12s ease, box-shadow 0.12s ease,
-          background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
-        white-space: nowrap;
-      }
-
-      .btn-primary {
-        background: linear-gradient(135deg, #22c55e, #4ade80);
-        color: #022c22;
-        box-shadow:
-          0 10px 22px rgba(34, 197, 94, 0.55),
-          0 0 0 1px rgba(16, 185, 129, 0.7);
-      }
-
-      .btn-secondary {
-        background: linear-gradient(135deg, #2563eb, #1d4ed8);
-        border: none;
-        color: #ffffff;
-        box-shadow:
-          0 10px 24px rgba(37, 99, 235, 0.35),
-          0 0 0 1px rgba(37, 99, 235, 0.5);
-      }
-
-      .btn-ghost {
-        flex: 0 0 auto;
-        padding-inline: 14px;
-        background: rgba(37, 99, 235, 0.06);
-        border: 1px solid rgba(148, 163, 184, 0.6);
-        color: var(--accent);
-      }
-
-      .btn-icon {
-        font-size: 16px;
-      }
-
-      .btn-primary:active,
-      .btn-secondary:active,
-      .btn-ghost:active {
-        transform: scale(0.97);
-      }
-
-      .btn-primary:hover {
-        box-shadow:
-          0 14px 30px rgba(34, 197, 94, 0.65),
-          0 0 0 1px rgba(16, 185, 129, 0.8);
-      }
-
-      .btn-disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        box-shadow: none !important;
-        border-color: rgba(148, 163, 184, 0.2) !important;
-        background: rgba(31, 41, 55, 0.7) !important;
-        color: rgba(148, 163, 184, 0.7) !important;
-      }
-
-      .meta-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 11px;
-        color: var(--text-muted);
-      }
-
-      .meta-kv {
-        display: flex;
-        gap: 16px;
-      }
-
-      .meta-pill {
-        padding: 6px 12px;
-        border-radius: 999px;
-        background: #E8F0FE; /* 浅蓝色背景，看起来非常“AI”且清爽 */
-        border: 1px solid rgba(37, 99, 235, 0.25);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        color: #1967D2; /* 让内部文字变成深蓝色，增加可读性 */
-        font-weight: 500;
-      }
-
-      .meta-label {
-        color: #5F6368; /* 标签名用灰色 */
-        font-size: 12px;
-      }
-
-      .meta-value {
-        color: #1A73E8; /* 数值用鲜亮的蓝色 */
-        font-weight: bold;
-      }
-
-      .meta-warning {
-        color: var(--danger);
-      }
-
-      .error-text {
-        color: var(--danger);
-        font-size: 11px;
-        margin-top: 4px;
-      }
-
-      input[type="file"] {
-        display: none;
-      }
-
-      @media (max-width: 900px) {
-        .app-shell {
-          padding: 12px 12px;
-        }
-
-        .app-inner {
-          border-radius: 0;
-          box-shadow: none;
-          min-height: calc(100vh - 24px);
-          grid-template-columns: 1fr;
-          grid-template-rows: auto auto auto;
-          grid-template-areas:
-            "header"
-            "preview"
-            "controls";
-        }
-      }
-    </style>
-
-    <!-- MediaPipe Hands (Web, legacy) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Palm Reader · Pro Terminal</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-    <!-- OpenCV.js (for后续图像处理扩展，当前示例不强依赖) -->
-    <script async src="https://docs.opencv.org/4.x/opencv.js"></script>
-  </head>
 
-  <body>
-    <div class="app-shell">
-      <div class="app-inner">
-        <header class="app-header">
-          <div class="title-block">
-            <div class="title">
-              Palm Reader Vibe
-              <span class="title-pill">Hands · Web SDK</span>
+    <style>
+        :root {
+            --bg-main: #F4F7F9;
+            --sidebar-bg: #FFFFFF;
+            --accent-blue: #1A73E8;
+            --accent-soft: #E8F0FE;
+            --text-title: #202124;
+            --text-body: #3C4043;
+            --text-muted: #5F6368;
+            --border: #DADCE0;
+            --shadow: 0 4px 20px rgba(0,0,0,0.06);
+            --success: #22c55e;
+        }
+
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            background: var(--bg-main);
+            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+            color: var(--text-body);
+            overflow: hidden;
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: 300px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        .brand { margin-bottom: 32px; }
+        .brand h1 { font-size: 20px; margin: 0; color: var(--text-title); font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .brand span { font-size: 10px; color: var(--accent-blue); background: var(--accent-soft); padding: 2px 6px; border-radius: 4px; }
+        .brand p { font-size: 12px; color: var(--text-muted); margin: 6px 0 0; }
+
+        .control-group { margin-bottom: 24px; }
+        .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; display: block; letter-spacing: 0.05em; }
+
+        .btn-stack { display: grid; gap: 10px; }
+        button { 
+            all: unset; cursor: pointer; border-radius: 8px; font-size: 13px; font-weight: 600; 
+            display: flex; align-items: center; justify-content: center; gap: 8px; 
+            transition: all 0.2s; height: 42px; 
+        }
+        
+        .btn-source { background: #f8f9fa; border: 1px solid var(--border); color: var(--text-body); }
+        .btn-source:hover { background: var(--accent-soft); border-color: var(--accent-blue); }
+        
+        .btn-action { background: var(--accent-blue); color: white; box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2); }
+        .btn-action:hover { transform: translateY(-1px); }
+        .btn-disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+
+        .stats-panel { margin-top: auto; display: grid; gap: 10px; }
+        .stat-card { background: #F8F9FA; border: 1px solid var(--border); padding: 12px; border-radius: 10px; }
+        .stat-card label { font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 2px; }
+        .stat-card .value { font-size: 14px; font-weight: 700; color: var(--text-title); }
+
+        /* --- Main View --- */
+        .main-view { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 20px; overflow: hidden; position: relative; }
+        
+        .canvas-container { 
+            flex: 1; background: #000; border-radius: 16px; position: relative; 
+            box-shadow: var(--shadow); border: 1px solid var(--border); 
+            display: flex; align-items: center; justify-content: center; overflow: hidden; 
+        }
+
+        #output-canvas { width: 100%; height: 100%; object-fit: contain; z-index: 2; transition: opacity 0.3s; }
+        #output-canvas.mirrored { transform: scaleX(-1); }
+
+        /* 引导提示图层 */
+        .overlay-guide {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white; text-align: center; z-index: 1; pointer-events: none;
+            background: radial-gradient(circle, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 100%);
+        }
+        .overlay-guide svg { width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.6; }
+
+        /* --- Analysis Sidebar --- */
+        .analysis-sidebar {
+            width: 320px; background: var(--sidebar-bg); border-left: 1px solid var(--border);
+            display: flex; flex-direction: column; padding: 24px; overflow-y: auto; flex-shrink: 0;
+        }
+
+        .report-card {
+            background: white; border: 1px solid var(--border); border-radius: 12px; 
+            padding: 16px; margin-bottom: 16px;
+        }
+        .report-card h3 { margin: 0 0 8px 0; font-size: 14px; color: var(--accent-blue); display: flex; align-items: center; gap: 6px; }
+        .report-card p { margin: 0; font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+        
+        .tag { 
+            display: inline-block; padding: 3px 8px; border-radius: 4px; 
+            background: #F1F3F4; font-size: 10px; margin-top: 10px; font-weight: 700; 
+        }
+
+        #video, #file-input { display: none; }
+    </style>
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="brand">
+            <h1>Palm AI <span>Vision</span></h1>
+            <p>专业级掌纹几何特征提取系统</p>
+        </div>
+
+        <div class="control-group">
+            <span class="section-label">数据接入</span>
+            <div class="btn-stack">
+                <button class="btn-source" id="open-camera-btn">📷 开启高清镜头</button>
+                <button class="btn-source" id="upload-photo-btn">🖼️ 导入本地图像</button>
+                <button class="btn-action btn-disabled" id="recognize-btn">✨ 开始深度识别</button>
             </div>
-            <div class="subtitle">掌纹关键点 · 摄像头 / 图片上传 Demo</div>
-          </div>
-          <div class="status-chip">
-            <div class="status-chip-main" id="status-text">待机</div>
-            <div class="status-chip-sub" id="mode-text">未选择输入源</div>
-          </div>
-        </header>
+            <input type="file" id="file-input" accept="image/*" />
+        </div>
 
-        <section class="preview-shell">
-          <video id="video" playsinline></video>
-          <canvas id="output-canvas"></canvas>
-          <div class="preview-overlay" id="overlay">
-            <div class="preview-hint" id="hint-text">
-              <span class="preview-hint-dot"></span>
-              <span
-                >请打开摄像头或上传一张图片，确保手心正对镜头并保持光线充足。</span
-              >
+        <div class="stats-panel">
+            <span class="section-label">实时流状态</span>
+            <div class="stat-card"><label>计算延迟</label><span class="value" id="latency-label">-- ms</span></div>
+            <div class="stat-card"><label>分辨率</label><span class="value" id="res-label">0 x 0</span></div>
+            <div class="stat-card"><label>引擎反馈</label><span class="value" id="status-text">待机状态</span></div>
+        </div>
+    </aside>
+
+    <main class="main-view">
+        <div class="canvas-container">
+            <div class="overlay-guide" id="guide-layer">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm4.59-12.42L10 14.17l-2.59-2.58L6 13l4 4 8-8z"/></svg>
+                <h2 style="font-size: 18px; margin: 0;">准备就绪</h2>
+                <p style="font-size: 13px; opacity: 0.8; margin-top: 8px;">请授权摄像头或上传一张手掌正面清晰照片</p>
             </div>
-          </div>
-        </section>
+            <video id="video" playsinline></video>
+            <canvas id="output-canvas"></canvas>
+        </div>
+    </main>
 
-        <section class="controls">
-          <div class="btn-row">
-            <button class="btn-secondary" id="open-camera-btn">
-              <span class="btn-icon">📷</span>
-              打开摄像头
-            </button>
-            <button class="btn-secondary" id="upload-photo-btn">
-              <span class="btn-icon">🖼️</span>
-              上传照片
-            </button>
-            <button class="btn-ghost" id="recognize-btn">
-              <span class="btn-icon">✨</span>
-              识别
-            </button>
-            <input type="file" accept="image/*" id="file-input" />
-          </div>
-
-          <div class="meta-row">
-            <div class="meta-kv">
-              <span class="meta-pill">
-                <span class="meta-label">耗时</span>
-                <span class="meta-value" id="latency-label">-- ms</span>
-              </span>
-              <span class="meta-pill">
-                <span class="meta-label">置信度</span>
-                <span class="meta-value" id="confidence-label">--</span>
-              </span>
-              <span class="meta-pill">
-                <span class="meta-label">三条主线</span>
-                <span class="meta-value" id="lines-label">待生成</span>
-              </span>
-            </div>
-            <span id="quality-label">建议：正对手心 · 光线充足</span>
-          </div>
-          <div id="error-label" class="error-text"></div>
-        </section>
-      </div>
-    </div>
+    <aside class="analysis-sidebar">
+        <span class="section-label">生理特征报告</span>
+        <div class="report-card">
+            <h3>🧬 生命线提取</h3>
+            <p>等待模型定位掌内关键点。定位后将分析其几何曲率与主干长度。</p>
+            <div class="tag">PENDING</div>
+        </div>
+        <div class="report-card">
+            <h3>🧠 智慧线提取</h3>
+            <p>系统已预载边缘检测算法，识别到手掌骨架后自动启动纹理分割。</p>
+            <div class="tag">WAITING</div>
+        </div>
+        <div class="report-card">
+            <h3>❤️ 感情线提取</h3>
+            <p>正在监控输入源。请确保掌心平整，光线均匀以获得最佳识别效果。</p>
+            <div class="tag">READY</div>
+        </div>
+    </aside>
 
     <script>
-      const videoEl = document.getElementById("video");
-      const canvasEl = document.getElementById("output-canvas");
-      const canvasCtx = canvasEl.getContext("2d");
-      const overlayEl = document.getElementById("overlay");
-      const openCameraBtn = document.getElementById("open-camera-btn");
-      const uploadPhotoBtn = document.getElementById("upload-photo-btn");
-      const recognizeBtn = document.getElementById("recognize-btn");
-      const fileInput = document.getElementById("file-input");
-      const statusText = document.getElementById("status-text");
-      const modeText = document.getElementById("mode-text");
-      const hintText = document.getElementById("hint-text");
-      const latencyLabel = document.getElementById("latency-label");
-      const confidenceLabel = document.getElementById("confidence-label");
-      const linesLabel = document.getElementById("lines-label");
-      const qualityLabel = document.getElementById("quality-label");
-      const errorLabel = document.getElementById("error-label");
+        const videoEl = document.getElementById("video");
+        const canvasEl = document.getElementById("output-canvas");
+        const canvasCtx = canvasEl.getContext("2d");
+        const resLabel = document.getElementById("res-label");
+        const latencyLabel = document.getElementById("latency-label");
+        const statusText = document.getElementById("status-text");
+        const guideLayer = document.getElementById("guide-layer");
+        const recognizeBtn = document.getElementById("recognize-btn");
 
-      let camera = null;
-      let hands = null;
-      let lastLandmarks = null;
-      let lastLatencyMs = null;
-      let usingCamera = false;
+        let hands = null;
+        let camera = null;
+        let lastResults = null;
 
-      function setStatus(main, mode, quality) {
-        if (main !== undefined) statusText.textContent = main;
-        if (mode !== undefined) modeText.textContent = mode;
-        if (quality !== undefined) qualityLabel.textContent = quality;
-      }
-
-      function setError(message) {
-        errorLabel.textContent = message || "";
-      }
-
-      function setButtonsState({ cameraBusy, imageBusy }) {
-        if (cameraBusy) {
-          openCameraBtn.classList.add("btn-disabled");
-        } else {
-          openCameraBtn.classList.remove("btn-disabled");
-        }
-
-        if (imageBusy) {
-          uploadPhotoBtn.classList.add("btn-disabled");
-        } else {
-          uploadPhotoBtn.classList.remove("btn-disabled");
-        }
-      }
-
-      function resizeCanvasToContainer() {
-        const rect = canvasEl.parentElement.getBoundingClientRect();
-        canvasEl.width = rect.width;
-        canvasEl.height = rect.height;
-      }
-
-      // 仅用于摄像头模式的自适应
-      window.addEventListener("resize", () => {
-        if (usingCamera) {
-          resizeCanvasToContainer();
-        }
-      });
-      resizeCanvasToContainer();
-
-      function onResults(results) {
-        const tEnd = performance.now();
-
-        if (results.image) {
-          const tStart = results._startTs || tEnd;
-          canvasCtx.save();
-          canvasCtx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-
-          const imgW = results.image.width;
-          const imgH = results.image.height;
-          const scale = Math.min(
-            canvasEl.width / imgW,
-            canvasEl.height / imgH,
-          );
-          const drawW = imgW * scale;
-          const drawH = imgH * scale;
-          let offsetX = (canvasEl.width - drawW) / 2;
-          const offsetY = (canvasEl.height - drawH) / 2;
-
-          // 有内容时隐藏中央提示
-          overlayEl.classList.add("hidden");
-
-          // 先画原图
-          canvasCtx.drawImage(
-            results.image,
-            0,
-            0,
-            imgW,
-            imgH,
-            offsetX,
-            offsetY,
-            drawW,
-            drawH,
-          );
-
-          lastLandmarks = null;
-          let count = 0;
-
-          if (results.multiHandLandmarks && results.multiHandLandmarks.length) {
-            lastLandmarks = [];
-
-            for (let i = 0; i < results.multiHandLandmarks.length; i++) {
-              const landmarks = results.multiHandLandmarks[i];
-              lastLandmarks.push(landmarks);
-              count += landmarks.length;
-
-              // 手动将归一化坐标映射到 Canvas 像素坐标，并绘制连接线与关键点
-              const pts = landmarks.map((lm) => {
-                const xImg = lm.x * drawW + offsetX;
-                const yImg = lm.y * drawH + offsetY;
-                return { x: xImg, y: yImg };
-              });
-
-              // 根据 MediaPipe 的 HAND_CONNECTIONS 索引绘制连线（半透明白色）
-              if (window.HAND_CONNECTIONS) {
-                canvasCtx.strokeStyle = "rgba(255, 255, 255, 0.7)";
-                canvasCtx.lineWidth = 2;
-                for (const [startIdx, endIdx] of window.HAND_CONNECTIONS) {
-                  const p1 = pts[startIdx];
-                  const p2 = pts[endIdx];
-                  if (!p1 || !p2) continue;
-                  canvasCtx.beginPath();
-                  canvasCtx.moveTo(p1.x, p1.y);
-                  canvasCtx.lineTo(p2.x, p2.y);
-                  canvasCtx.stroke();
-                }
-              }
-
-              // 画关键点（亮绿色）
-              canvasCtx.fillStyle = "#00FF00";
-              for (const p of pts) {
-                canvasCtx.beginPath();
-                canvasCtx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-                canvasCtx.fill();
-              }
-            }
-          }
-
-          // 调试用：如果检测到手掌，在左上角画一个绿色方块
-          if (lastLandmarks) {
-            canvasCtx.fillStyle = "#00FF00";
-            canvasCtx.fillRect(8, 8, 18, 18);
-
-            // 在掌心附近显示 "Vibe Check: OK" 标签（取第一只手的所有点平均位置）
-            const firstHand = lastLandmarks[0];
-            if (firstHand && firstHand.length) {
-              let sumX = 0;
-              let sumY = 0;
-              for (const lm of firstHand) {
-                sumX += lm.x;
-                sumY += lm.y;
-              }
-              const cx =
-                (sumX / firstHand.length) * drawW +
-                offsetX;
-              const cy =
-                (sumY / firstHand.length) * drawH +
-                offsetY;
-
-              const label = "Vibe Check: OK";
-              canvasCtx.font = "12px system-ui, -apple-system, BlinkMacSystemFont";
-              const textMetrics = canvasCtx.measureText(label);
-              const paddingX = 8;
-              const paddingY = 4;
-              const boxW = textMetrics.width + paddingX * 2;
-              const boxH = 18;
-              const boxX = Math.max(6, Math.min(canvasEl.width - boxW - 6, cx - boxW / 2));
-              const boxY = Math.max(6, cy - 28);
-
-              canvasCtx.fillStyle = "rgba(15, 23, 42, 0.9)";
-              canvasCtx.strokeStyle = "rgba(0, 255, 0, 0.8)";
-              canvasCtx.lineWidth = 1;
-              const radius = 8;
-              canvasCtx.beginPath();
-              canvasCtx.moveTo(boxX + radius, boxY);
-              canvasCtx.lineTo(boxX + boxW - radius, boxY);
-              canvasCtx.quadraticCurveTo(
-                boxX + boxW,
-                boxY,
-                boxX + boxW,
-                boxY + radius,
-              );
-              canvasCtx.lineTo(boxX + boxW, boxY + boxH - radius);
-              canvasCtx.quadraticCurveTo(
-                boxX + boxW,
-                boxY + boxH,
-                boxX + boxW - radius,
-                boxY + boxH,
-              );
-              canvasCtx.lineTo(boxX + radius, boxY + boxH);
-              canvasCtx.quadraticCurveTo(
-                boxX,
-                boxY + boxH,
-                boxX,
-                boxY + boxH - radius,
-              );
-              canvasCtx.lineTo(boxX, boxY + radius);
-              canvasCtx.quadraticCurveTo(boxX, boxY, boxX + radius, boxY);
-              canvasCtx.closePath();
-              canvasCtx.fill();
-              canvasCtx.stroke();
-
-              canvasCtx.fillStyle = "#00FF00";
-              canvasCtx.fillText(
-                label,
-                boxX + paddingX,
-                boxY + boxH - paddingY - 2,
-              );
-            }
-          }
-
-          canvasCtx.restore();
-
-          const pseudoConf = lastLandmarks ? 0.9 : 0.0;
-          confidenceLabel.textContent = lastLandmarks ? "0.90+" : "--";
-          linesLabel.textContent = lastLandmarks ? "待生成" : "--";
-
-          if (!lastLandmarks) {
-            setStatus("未检测到手掌", usingCamera ? "摄像头输入" : "图片输入");
-            setError("请确保手心正对镜头并保持光线充足。");
-          } else {
-            setStatus("检测到手掌", usingCamera ? "摄像头输入" : "图片输入");
-            setError("");
-          }
-
-          lastLatencyMs = tEnd - tStart;
-          latencyLabel.textContent = `${lastLatencyMs.toFixed(1)} ms`;
-        }
-      }
-
-      function initMediaPipe() {
-        hands = new window.Hands({
-          locateFile: (file) =>
-            `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-        });
-
-        hands.setOptions({
-          maxNumHands: 1,
-          modelComplexity: 1,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
-        });
-
-        hands.onResults((results) => {
-          results._startTs = results._startTs || performance.now();
-          onResults(results);
-        });
-      }
-
-      function ensureHandsReady() {
-        if (!window.Hands) {
-          setError("MediaPipe Hands SDK 加载中，请稍候再试…");
-          return false;
-        }
-        if (!hands) {
-          initMediaPipe();
-        }
-        return true;
-      }
-
-      async function startCamera() {
-        if (!ensureHandsReady()) return;
-        if (openCameraBtn.classList.contains("btn-disabled")) return;
-
-        usingCamera = true;
-        // 摄像头模式：镜像 Canvas 以获得“自拍镜子”体验
-        canvasEl.classList.add("mirrored");
-        setButtonsState({ cameraBusy: true, imageBusy: false });
-        setStatus("等待摄像头授权…", "摄像头输入");
-        hintText.textContent = "如果浏览器弹出权限提示，请选择“允许使用摄像头”。";
-
-        try {
-          const constraints = {
-            video: { facingMode: "user", width: 640, height: 480 },
-            audio: false,
-          };
-          const stream = await navigator.mediaDevices.getUserMedia(
-            constraints,
-          );
-          videoEl.srcObject = stream;
-          await videoEl.play();
-
-          setStatus("实时检测中", "摄像头输入", "移动手掌以查看关键点跟随效果");
-          setError("");
-
-          if (camera) {
-            camera.stop();
-          }
-
-          camera = new window.Camera(videoEl, {
-            onFrame: async () => {
-              const tStart = performance.now();
-              await hands.send({
-                image: videoEl,
-                _startTs: tStart,
-              });
-            },
-            width: 640,
-            height: 480,
-          });
-          camera.start();
-        } catch (err) {
-          console.error(err);
-          setError("无法访问摄像头，请检查浏览器权限或使用 HTTPS / localhost 打开页面。");
-          setStatus("摄像头不可用", "建议改用“上传照片”模式");
-          setButtonsState({ cameraBusy: false, imageBusy: false });
-        }
-      }
-
-      function stopCamera() {
-        if (camera) {
-          camera.stop();
-          camera = null;
-        }
-        if (videoEl.srcObject) {
-          videoEl.srcObject.getTracks().forEach((t) => t.stop());
-          videoEl.srcObject = null;
-        }
-      }
-
-      function handleFileChange(event) {
-        const file = event.target.files && event.target.files[0];
-        if (!file) return;
-        if (!ensureHandsReady()) return;
-
-        usingCamera = false;
-        // 上传图片模式：取消镜像
-        canvasEl.classList.remove("mirrored");
-        stopCamera();
-        setButtonsState({ cameraBusy: false, imageBusy: true });
-        setStatus("处理中…", "图片输入");
-        hintText.textContent = "正在分析上传的图片，请稍候…";
-
-        const img = new Image();
-        img.onload = async () => {
-          try {
-            // 根据图片宽高比调整 Canvas 尺寸，避免拉伸
-            const containerRect = canvasEl.parentElement.getBoundingClientRect();
-            const containerWidth = containerRect.width;
-            const aspect = img.height / img.width;
-            canvasEl.width = containerWidth;
-            canvasEl.height = containerWidth * aspect;
-
-            const offscreen = document.createElement("canvas");
-            offscreen.width = img.width;
-            offscreen.height = img.height;
-            const ctx = offscreen.getContext("2d");
-            ctx.drawImage(img, 0, 0);
-
-            const tStart = performance.now();
-            await hands.send({
-              image: offscreen,
-              _startTs: tStart,
+        function initMediaPipe() {
+            hands = new Hands({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
             });
-
-            setButtonsState({ cameraBusy: false, imageBusy: false });
-          } catch (err) {
-            setError("处理图片时发生错误，请尝试更换图片。");
-            setStatus("处理失败", "图片输入");
-            setButtonsState({ cameraBusy: false, imageBusy: false });
-          } finally {
-            fileInput.value = "";
-          }
-        };
-        img.onerror = () => {
-          setError("无法读取图片文件，请确认格式为 JPG/PNG 等常见图像类型。");
-          setButtonsState({ cameraBusy: false, imageBusy: false });
-          fileInput.value = "";
-        };
-        img.src = URL.createObjectURL(file);
-      }
-
-      function handleRecognizeClick() {
-        if (!lastLandmarks || !lastLandmarks.length) {
-          setError("当前没有可用的关键点，请先打开摄像头或上传包含手掌的图片。");
-          return;
+            hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.6,
+                minTrackingConfidence: 0.6
+            });
+            hands.onResults(onResults);
         }
-        const payload = {
-          timestamp: new Date().toISOString(),
-          latencyMs: lastLatencyMs,
-          hands: lastLandmarks.map((landmarks, handIndex) => ({
-            handIndex,
-            points: landmarks.map((lm, idx) => ({
-              index: idx,
-              x: lm.x,
-              y: lm.y,
-              z: lm.z,
-            })),
-          })),
-        };
-        console.log("[Palm Reader Vibe] 识别结果：", payload);
-        setError("");
-        // 识别完成后再展示“可再次上传 / 切换模式”提示（无论是摄像头还是照片模式）
-        hintText.textContent =
-          "可再次上传新图片，或切换到摄像头模式进行实时检测。";
-      }
 
-      openCameraBtn.addEventListener("click", () => {
-        if (openCameraBtn.classList.contains("btn-disabled")) return;
-        startCamera();
-      });
+        function onResults(results) {
+            const tEnd = performance.now();
+            const tStart = results._startTs || tEnd;
+            if (!results.image) return;
 
-      uploadPhotoBtn.addEventListener("click", () => {
-        if (uploadPhotoBtn.classList.contains("btn-disabled")) return;
-        stopCamera();
-        fileInput.click();
-      });
+            // 隐藏引导层
+            guideLayer.style.display = 'none';
 
-      fileInput.addEventListener("change", handleFileChange);
-      recognizeBtn.addEventListener("click", handleRecognizeClick);
+            // 动态分辨率匹配
+            if (canvasEl.width !== results.image.width || canvasEl.height !== results.image.height) {
+                canvasEl.width = results.image.width;
+                canvasEl.height = results.image.height;
+                resLabel.textContent = `${canvasEl.width} x ${canvasEl.height}`;
+            }
 
-      window.addEventListener("beforeunload", () => {
-        stopCamera();
-      });
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasEl.width, canvasEl.height);
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                lastResults = landmarks;
+                statusText.textContent = "目标锁定";
+                statusText.style.color = "var(--success)";
+                recognizeBtn.classList.remove("btn-disabled");
+
+                // --- 修正后的动态缩放逻辑 ---
+                // 使用更温和的缩放系数：在 1080p 下 baseScale 约为 1.35
+                const baseScale = Math.sqrt(canvasEl.width * canvasEl.height) / 1200; 
+                const pointRadius = Math.max(4, 7 * baseScale); // 视频流下约 8-10，高清图下约 15-20
+                const lineThickness = Math.max(1.5, 3.5 * baseScale); // 线条变细
+
+                drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
+                    color: 'rgba(255, 255, 255, 0.6)', 
+                    lineWidth: lineThickness 
+                });
+                
+                drawLandmarks(canvasCtx, landmarks, {
+                    color: '#22c55e', 
+                    fillColor: '#FFFFFF',
+                    lineWidth: Math.max(1, 1.5 * baseScale), 
+                    radius: pointRadius 
+                });
+            } else {
+                statusText.textContent = "正在寻找...";
+                statusText.style.color = "var(--accent-blue)";
+                recognizeBtn.classList.add("btn-disabled");
+            }
+            canvasCtx.restore();
+            latencyLabel.textContent = `${Math.round(tEnd - tStart)} ms`;
+        }
+
+        async function startCamera() {
+            if (!hands) initMediaPipe();
+            canvasEl.classList.add("mirrored");
+            statusText.textContent = "启动镜头...";
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 1920 }, height: { ideal: 1080 } }
+                });
+                videoEl.srcObject = stream;
+                await videoEl.play();
+
+                camera = new Camera(videoEl, {
+                    onFrame: async () => {
+                        await hands.send({image: videoEl, _startTs: performance.now()});
+                    },
+                    width: 1920, height: 1080
+                });
+                camera.start();
+            } catch (err) {
+                alert("摄像头启动失败，请检查授权。");
+            }
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (!hands) initMediaPipe();
+            
+            canvasEl.classList.remove("mirrored");
+            if (camera) camera.stop();
+            statusText.textContent = "正在解析图片...";
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = async () => {
+                    await hands.send({image: img, _startTs: performance.now()});
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        document.getElementById("open-camera-btn").onclick = startCamera;
+        document.getElementById("upload-photo-btn").onclick = () => document.getElementById("file-input").click();
+        document.getElementById("file-input").onchange = handleFileUpload;
     </script>
-  </body>
+</body>
 </html>
-
