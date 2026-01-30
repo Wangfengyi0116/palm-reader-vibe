@@ -167,6 +167,12 @@
         align-items: center;
         justify-content: center;
         pointer-events: none;
+        transition: opacity 0.18s ease;
+        opacity: 1;
+      }
+
+      .preview-overlay.hidden {
+        opacity: 0;
       }
 
       .preview-hint {
@@ -353,7 +359,7 @@
         <section class="preview-shell">
           <video id="video" playsinline></video>
           <canvas id="output-canvas"></canvas>
-          <div class="preview-overlay">
+          <div class="preview-overlay" id="overlay">
             <div class="preview-hint" id="hint-text">
               <span class="preview-hint-dot"></span>
               <span
@@ -402,6 +408,7 @@
       const videoEl = document.getElementById("video");
       const canvasEl = document.getElementById("output-canvas");
       const canvasCtx = canvasEl.getContext("2d");
+      const overlayEl = document.getElementById("overlay");
       const openCameraBtn = document.getElementById("open-camera-btn");
       const uploadPhotoBtn = document.getElementById("upload-photo-btn");
       const recognizeBtn = document.getElementById("recognize-btn");
@@ -452,7 +459,12 @@
         canvasEl.height = rect.height;
       }
 
-      window.addEventListener("resize", resizeCanvasToContainer);
+      // 仅用于摄像头模式的自适应
+      window.addEventListener("resize", () => {
+        if (usingCamera) {
+          resizeCanvasToContainer();
+        }
+      });
       resizeCanvasToContainer();
 
       function onResults(results) {
@@ -473,6 +485,9 @@
           const drawH = imgH * scale;
           let offsetX = (canvasEl.width - drawW) / 2;
           const offsetY = (canvasEl.height - drawH) / 2;
+
+          // 有内容时隐藏中央提示
+          overlayEl.classList.add("hidden");
 
           // 先画原图
           canvasCtx.drawImage(
@@ -726,6 +741,13 @@
         const img = new Image();
         img.onload = async () => {
           try {
+            // 根据图片宽高比调整 Canvas 尺寸，避免拉伸
+            const containerRect = canvasEl.parentElement.getBoundingClientRect();
+            const containerWidth = containerRect.width;
+            const aspect = img.height / img.width;
+            canvasEl.width = containerWidth;
+            canvasEl.height = containerWidth * aspect;
+
             const offscreen = document.createElement("canvas");
             offscreen.width = img.width;
             offscreen.height = img.height;
@@ -740,7 +762,6 @@
 
             setButtonsState({ cameraBusy: false, imageBusy: false });
           } catch (err) {
-            console.error(err);
             setError("处理图片时发生错误，请尝试更换图片。");
             setStatus("处理失败", "图片输入");
             setButtonsState({ cameraBusy: false, imageBusy: false });
@@ -758,7 +779,6 @@
 
       function handleRecognizeClick() {
         if (!lastLandmarks || !lastLandmarks.length) {
-          console.log("[Palm Reader Vibe] 当前没有可用的关键点数据。");
           setError("当前没有可用的关键点，请先打开摄像头或上传包含手掌的图片。");
           return;
         }
@@ -775,10 +795,7 @@
             })),
           })),
         };
-        console.log(
-          "[Palm Reader Vibe] 识别结果（用于后续掌纹主线提取）：",
-          payload,
-        );
+        console.log("[Palm Reader Vibe] 识别结果：", payload);
         setError("");
         // 识别完成后再展示“可再次上传 / 切换模式”提示（无论是摄像头还是照片模式）
         hintText.textContent =
